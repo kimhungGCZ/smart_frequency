@@ -35,38 +35,41 @@ pd_data = pd.read_csv('./data/DO.csv')
 raw_value = list(pd_data['Value'].values)
 
 ############################# READING JSON DARA ################################
-with open('./data/data_202409.json') as f:
-    data = json.load(f)
-
-raw_value = [i[1] for i in data]
+# with open('./data/data_202409.json') as f:
+#     data = json.load(f)
+#
+# raw_value = [i[1] for i in data]
 
 
 ############################# PROCESSING ###############################################
 
-def processing_frequency(windown_size = 20, n = np.e):
+def processing_frequency(windown_size = 20, n = 4):
     start_frequency = 1;
     output_array = raw_value[0:windown_size]
     exam_point_index = 0
+
     frequency_array = []
     instructed_array = []
+    diff_array = []
     while exam_point_index < len(raw_value):
         instructed_array.append(exam_point_index)
         if exam_point_index >= windown_size:
             new_value = np.interp(exam_point_index, range(len(raw_value)), raw_value)
-            mean_windown_size = np.mean(output_array[-windown_size:])
-            mad_windown_size = np.mean([abs(i - mean_windown_size) for i in (output_array[-windown_size:])])
             mean_difff = np.mean(
                 change_after_k_seconds_with_abs(output_array[-windown_size:]))
 
-            D_value = ( np.abs((new_value - output_array[-1])) - mean_difff )/ mean_difff
-            # D_value = (np.abs((new_value - mean_windown_size) - (output_array[-1] - mean_windown_size)))/mad_windown_size
-            # D_value = (np.abs((new_value - mean_windown_size) - mad_windown_size))/mad_windown_size
-            frequency_change = n / (n - 1 + np.power(np.e, (D_value)))
-            new_frequecy = start_frequency * frequency_change
+            D_value = ( np.abs((new_value - output_array[-1])) -  (n + 1)/2*mean_difff )/ mean_difff
+
+
+            frequency_change = n + (1 - n) / (1 + (np.power(np.e, (-n*D_value))))
+            #frequency_change = n + (1 - n) / (1 + (np.power(np.e, (-n*D_value))))
+
+            new_frequecy = 0 + frequency_change
             frequency_array.append(new_frequecy)
             exam_point_index = exam_point_index + new_frequecy
             output_array.append(new_value)
-            # start_frequency = new_frequecy
+            diff_array.append(( np.abs((new_value - output_array[-1])) - mean_difff ))
+            start_frequency = new_frequecy
         else:
             exam_point_index = exam_point_index + 1
             frequency_array.append(start_frequency)
@@ -103,24 +106,15 @@ def processing_frequency(windown_size = 20, n = np.e):
     # plt.plot(instructed_array, frequency_array, 'b.')
     #
     # plt.show()
-    ploting.plot_data_all("Smart Frequency.html",
-                          [
-                              [list(range(0, len(raw_value))), raw_value],
-                              [list(range(0, len(raw_value))), raw_value],
-                              [list(instructed_array), output_array],
-                              [list(range(0, len(raw_value))), list(reconstructed_data)]
-                          ],
-                          ['lines', 'markers', 'markers', 'lines'],
-                          [None, 'circle', 'circle', None, 'x'],
-                          ['Origin data', "Origin point", "Sampled data", "Reconstructed Data"]
-                          )
+    #
     return [n, windown_size, len(output_array), 100*MSE]
 
 if __name__ == "__main__":
-    n_array = [4]
+    #n_array = [2,4,6,8,10]
     #windown_size_array = [5, 10, 20, 50, 100]
     windown_size_array = [50]
-    #n_array = np.arange(2,64,2)
+    n_array = np.arange(2,20,2)
+    n_array = np.concatenate(([1], n_array))
     ploting_result = {}
     for ws in windown_size_array:
         result = []
@@ -153,10 +147,12 @@ if __name__ == "__main__":
 
     ############ COMPARASION ####################
 
-    # array_result = np.array(ploting_result[50])
-    #
-    # f = interpolate.interp1d(array_result[:,2], array_result[:,3])
-    # new_value = f([1064,548,421,297,146])
-    # DDASA = [1.62, 5.52, 8.43, 9.99, 11.7]
-    # print(new_value - DDASA)
+    array_result = np.array(ploting_result[50])
+
+    f = interpolate.interp1d(array_result[:,2], array_result[:,3])
+    #new_value = f([1064,548,421,297,146])
+    new_value = f([1064,548,421,297])
+    DDASA = [1.62, 5.52, 8.43, 9.99]
+    #DDASA = [1.62, 5.52, 8.43, 9.99, 11.7]
+    print(new_value - DDASA)
 
